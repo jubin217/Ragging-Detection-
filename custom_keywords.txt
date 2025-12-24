@@ -1,0 +1,8 @@
+# custom_keywords.txt
+# Put one abusive phrase per line. Comments start with #
+# Examples:
+പോടാ
+poda myre
+poda patti
+adikada avane
+അടിക്കെടാ അവനെ
