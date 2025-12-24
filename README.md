@@ -40,23 +40,26 @@ The models are trained to accurately detect violent events in various settings, 
 
 1. **Clone the Repository**:
     ```bash
-    git clone (https://github.com/Musawer1214/Fight-Violence-detection-yolov8)
-    cd <repository-directory>
+    git clone https://github.com/jubin217/Ragging-Detection-.git
+    cd Ragging-Detection
     ```
 
 2. **Install Dependencies**:
     ```bash
     pip install -r requirements.txt
     ```
+    ```bash
+    pip install malayalam-hate-detector
+    ```
 
-3. **Run Single Class Detection (Violence/Fight)**:
+
+3. **Run Violence Detection (Violence/Fight)**:
    The provided script detects only the **Violence/Fight** class in both videos and images.
 
     ```bash
-    python detect.py --weights best.pt --source <input-video-or-image-path> --class 1 --save-txt
+    python fight.py
     ```
 
-   Replace `<input-video-or-image-path>` with the path to the video or image you wish to analyze. The **class ID** for **Violence/Fight** is **1**.
 
 4. **Model Weights**:
     - The `best.pt` file contains the pre-trained YOLOv8-nano or YOLOv8-small model optimized for detecting violence/fights.
@@ -68,7 +71,5 @@ The models are trained to accurately detect violent events in various settings, 
 
 ---
 
-## License
 
-This project is licensed under the [MIT License](LICENSE).
 
