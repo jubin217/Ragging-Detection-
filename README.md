@@ -52,7 +52,6 @@ The models are trained to accurately detect violent events in various settings, 
     pip install malayalam-hate-detector
     ```
 
-
 3. **Run Violence Detection (Violence/Fight)**:
    The provided script detects only the **Violence/Fight** class in both videos and images.
 
