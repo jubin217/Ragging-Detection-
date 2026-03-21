@@ -1,6 +1,20 @@
-fuzz
-opencv
+# ==========================================
+# RaggingGuard - Decision Engine Deployments
+# ==========================================
+
+# 1. CORE MATH
+# Pinned to <2.0 because Numpy 2.0+ ABIs frequently cause `Illegal instruction` core dumps on Raspberry Pi ARM architectures
+numpy==1.26.4
+
+# 2. VISION AI
+# Using headless to prevent Qt/GUI library conflicts on headless Pis
+opencv-python-headless
 ultralytics
-opencv-python 
-numpy
-#python
+
+# 3. AUDIO PIPELINE
+SpeechRecognition
+pyaudio
+
+# 4. CUSTOM & CLOUD
+requests
+malayalam-hate-detector

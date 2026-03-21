@@ -1,1 +1,21 @@
-/__pycache__
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# System Configs
+.DS_Store
+.vscode/
+.idea/
+
+# React Dashboard (Managed in its own repo)
+web_dashboard/
+
+# Security - Do not commit Cloud credentials!
+pi_credentials.json
+*.env

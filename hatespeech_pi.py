@@ -30,10 +30,11 @@ def get_usb_mic_index():
 # --------------------------------------------------
 # EXTENDED DETECTOR (Package + Custom Keywords)
 # --------------------------------------------------
-class KeywordAwareMalayalamDetector(BaseDetector):
+class KeywordAwareMalayalamDetector:
     def __init__(self, keywords_file="custom_keywords.txt"):
         print("⏳ Loading Hate Speech Detection Model...")
-        super().__init__()  # 🔥 this loads MuRIL model
+        self.detector = BaseDetector()  # 🔥 this loads MuRIL model
+        self.recognizer = self.detector.recognizer
         self.km = KeywordsManager(keywords_file)
         print("✅ Model loaded")
 
@@ -50,7 +51,7 @@ class KeywordAwareMalayalamDetector(BaseDetector):
             }
 
         # 2️⃣ Otherwise fall back to ML model
-        return super().analyze_text(text)
+        return self.detector.analyze_text(text)
 
 
 # --------------------------------------------------

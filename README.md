@@ -1,74 +1,48 @@
-# Fight/Violence Detection Dataset and Model Overview
+# RaggingGuard AI (Python Decision Engine)
 
-This repository contains a dataset and YOLOv8 models (nano and small) trained to detect fights/violence and non-violence/no-fight in both videos and images. The models are optimized for surveillance and security applications where detecting physical confrontations is crucial.
+This is the primary Python backend for the RaggingGuard system. It uses a **multi-threaded architecture** on Raspberry Pi edge devices to concurrently run YOLOv8 Pose tracking for physical fight detection and real-time audio analysis for hateful and abusive speech.
 
-## Dataset Overview
-
-- **Dataset Classes:** The dataset consists of two classes:
-  1. **Violence/Fight:** Instances where physical violence is present.
-  2. **NoViolence/NoFight:** Instances with no physical confrontations.
-  
-- **Data Format:** 
-  - **Videos** and **Images** are labeled accordingly for each class.
-  - The dataset is designed for training deep learning models like YOLOv8 for violence detection.
-
-## Models
-
-- **YOLOv8 Models:** 
-  - We have primarily trained **YOLOv8-nano** and **YOLOv8-small** models.
-  - These models are lightweight and efficient, making them suitable for real-time detection tasks in resource-constrained environments.
-
-## Purpose
-
-The models are trained to accurately detect violent events in various settings, including crowds, public spaces, and sports activities.
-
-### Key Features:
-- **Single Class Detection:**
-  - The attached code is specifically designed to detect **one class** at a time, with the focus being on the **Violence/Fight** class.
-  - If the purpose is to detect only **Violence/Fight**, the models and code are pre-configured for this task.
-  - Non-violence events are ignored during detection, allowing the model to concentrate solely on identifying violent actions.
-
-## Code and Usage Instructions
-
-### Pre-requisites:
-- Python 3.8 or higher
-- YOLOv8 (Ultralytics)
-- PyTorch
-- OpenCV
-
-### Running the Detection:
-
-1. **Clone the Repository**:
-    ```bash
-    git clone https://github.com/jubin217/Ragging-Detection-.git
-    cd Ragging-Detection
-    ```
-
-2. **Install Dependencies**:
-    ```bash
-    pip install -r requirements.txt
-    ```
-    ```bash
-    pip install malayalam-hate-detector
-    ```
-
-3. **Run Violence Detection (Violence/Fight)**:
-   The provided script detects only the **Violence/Fight** class in both videos and images.
-
-    ```bash
-    python fight.py
-    ```
-
-
-4. **Model Weights**:
-    - The `best.pt` file contains the pre-trained YOLOv8-nano or YOLOv8-small model optimized for detecting violence/fights.
-
-## Notes
-
-- **Model Performance:** The models are trained on a diverse set of images to generalize across different environments. However, additional fine-tuning may be required depending on your specific use case.
-- **Future Enhancements:** We plan to extend the dataset and include more diverse scenarios to improve detection accuracy, including sports, public gatherings, and more.
+## Features
+- **YOLOv8 Pose Skeleton**: Tracks humans and computes acceleration vectors to determine if a physical altercation is occurring.
+- **Continuous Audio AI**: Sub-thread execution processes raw mic data concurrently against a PyTorch engine to detect abusive language.
+- **Multi-Device Cloud Linking**: Secure JSON configuration dynamically syncs edge inferences directly to Firebase so remote administrators see live reports across many physical sites simultaneously.
 
 ---
 
+## 🚀 Raspberry Pi Installation
 
+### 1. Install System Dependencies
+Before installing Python packages, you **must** install these system-level audio headers for PyAudio to compile correctly on Linux/Pi:
+```bash
+sudo apt-get update
+sudo apt-get install portaudio19-dev python3-pyaudio -y
+sudo apt-get install libatlas-base-dev -y
+```
 
+### 2. Create Python Environment
+*Note: Because of potential package conflicts on Raspberry Pi OS Bookworm, creating a virtual environment is highly recommended.*
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+### 3. Install Python Dependencies
+```bash
+pip install -r requirements.txt
+```
+*(We specifically use `numpy==1.26.4` and `opencv-python-headless` to bypass the notorious "Illegal instruction" errors that plague Raspberry Pis with newer ABI packages).*
+
+---
+
+## ⚙️ Running the Engine
+
+1. Open `pi_credentials.json` and insert the specific user's Email and Password that you registered on your web dashboard.
+2. Ensure you have the weights (`Yolo_nano_weights.pt` and `yolov8n-pose.pt`) inside the root directory.
+3. Run the engine:
+```bash
+python decision_engine_pi.py
+```
+
+The script will hook onto your Picamera2 module, start real-time telemetry, and push any detected anomalies seamlessly to the isolated Web Dashboard feed!
+
+> **Web Dashboard Note**: The interactive React dashboard code lives inside the `/web_dashboard` project folder and runs entirely independently of this hardware script.

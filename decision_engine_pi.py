@@ -1,10 +1,12 @@
-import time
 import sys
+import time
+import threading
+import collections
 import os
 
-# HACK: Enable system-installed Picamera2 (needs system numpy usually)
-# We do this EARLY, before importing 'cv2' which might import 'numpy'
-# This avoids ABI conflicts between venv-numpy and system-picamera2.
+# =========================
+# PICAMERA2 HACK (MUST BE BEFORE CV2)
+# =========================
 picam2_paths = [
     "/usr/lib/python3/dist-packages",
     "/usr/lib/python3.11/dist-packages",
@@ -16,22 +18,26 @@ for p in picam2_paths:
 
 try:
     from picamera2 import Picamera2
-    print("[FightProcess] Global import: Picamera2 loaded successfully.")
+    print("[DecisionEngine] Global import: Picamera2 loaded successfully.")
 except ImportError:
     Picamera2 = None
-    print("[FightProcess] Global import: Picamera2 not found (yet).")
+    print("[DecisionEngine] Global import: Picamera2 not found (yet).")
 except Exception as e:
     Picamera2 = None
-    # Just print warning, don't crash yet
-    print(f"[FightProcess] Global import: Picamera2 error: {e}")
+    print(f"[DecisionEngine] Global import: Picamera2 error: {e}")
 
-# Now safe to import cv2
+# Now safe to import cv2 and ultralytics
 import cv2
 import numpy as np
+import speech_recognition as sr
 from ultralytics import YOLO
 
+# Import from our existing Pi scripts
+from hatespeech_pi import KeywordAwareMalayalamDetector, get_usb_mic_index
+from firebase_logger import FirebaseLogger
+
 # =========================
-# PARAMETERS
+# GLOBALS & TUNABLES
 # =========================
 CONF_THRESHOLD = 0.6
 POSE_SPEED_THRESHOLD = 35
@@ -39,10 +45,16 @@ FLOW_THRESHOLD = 1.5
 RESOLUTION = (640, 480)
 FRAMERATE = 30
 
+# State Tracking (Timestamps)
+fight_events = collections.deque()
+hate_events = collections.deque()
+
+# Threads sync
+stop_event = threading.Event()
+
 # =========================
-# SETUP CAMERA
+# CAMERA SETUP (From fight_pi)
 # =========================
-print("📸 Initializing Camera...")
 class PiCamera2Wrapper:
     def __init__(self):
         self.is_running = False
@@ -90,7 +102,7 @@ class PiCamera2Wrapper:
 
 def open_camera():
     # 0. Try Picamera2
-    print("[FightProcess] Attempting Picamera2...")
+    print("[DecisionEngine] Attempting Picamera2...")
     try:
         picam = PiCamera2Wrapper()
         if picam.isOpened():
@@ -99,7 +111,7 @@ def open_camera():
         print(f"⚠️ Picamera2 failed: {e}")
 
     # 1. Try GStreamer Pipeline
-    print("[FightProcess] Attempting GStreamer pipeline (libcamerasrc)...")
+    print("[DecisionEngine] Attempting GStreamer pipeline (libcamerasrc)...")
     gst_pipeline = (
         f"libcamerasrc ! video/x-raw, width={RESOLUTION[0]}, height={RESOLUTION[1]}, framerate={FRAMERATE}/1 ! "
         "videoconvert ! videoscale ! video/x-raw, format=BGR ! appsink drop=1"
@@ -120,7 +132,7 @@ def open_camera():
     # 2. Try standard indices
     indices = [0, -1, 1]
     for idx in indices:
-        print(f"[FightProcess] Attempting to open camera index {idx}...")
+        print(f"[DecisionEngine] Attempting to open camera index {idx}...")
         cap = cv2.VideoCapture(idx, cv2.CAP_V4L2)
         if not cap.isOpened():
             cap = cv2.VideoCapture(idx)
@@ -174,6 +186,80 @@ def aggressive_pose(prev_kp, curr_kp):
     diffs = np.linalg.norm(curr - prev, axis=1)
     return diffs.size > 0 and np.max(diffs) > POSE_SPEED_THRESHOLD
 
+
+# =========================
+# BACKGROUND SPEECH PROCESS
+# =========================
+def start_speech_listener():
+    detector = KeywordAwareMalayalamDetector("custom_keywords.txt")
+    recognizer = sr.Recognizer()
+
+    def callback(recognizer, audio):
+        if stop_event.is_set():
+            return
+            
+        try:
+            text = recognizer.recognize_google(audio, language="ml-IN")
+            print(f"\n🔊 Transcribed: {text}")
+
+            result = detector.analyze_text(text)
+            if result["prediction"] == "ABUSIVE":
+                hate_events.append(time.time())
+                print(f"🚨 HATESPEECH DETECTED ({result['confidence']:.2%}) | {result.get('reason','ML')}")
+
+        except sr.UnknownValueError:
+            pass # Unclear audio
+        except sr.RequestError as e:
+            print(f"⚠️ Network error: {e}")
+        except Exception as e:
+            print("⚠️ Hate Speech Engine Error:", e)
+
+    # Auto-detect USB Mic
+    device_index = get_usb_mic_index()
+    mic = sr.Microphone(device_index=device_index)
+    
+    print("🎤 Adjusting for ambient noise... (Please be quiet)")
+    with mic as source:
+        recognizer.adjust_for_ambient_noise(source, duration=2)
+    print("✅ Microphone Ready!")
+
+    # Start background listening
+    stop_listening = recognizer.listen_in_background(
+        mic, callback, phrase_time_limit=8
+    )
+    return stop_listening
+
+# =========================
+# DECISION LOGIC
+# =========================
+def evaluate_ragging(now):
+    # Purge old events (older than 20 seconds)
+    while fight_events and now - fight_events[0] > 20:
+        fight_events.popleft()
+    while hate_events and now - hate_events[0] > 20:
+        hate_events.popleft()
+
+    fight_10s = sum(1 for t in fight_events if now - t <= 10)
+    fight_5s = sum(1 for t in fight_events if now - t <= 5)
+    hate_20s = len(hate_events) # all remaining are <= 20s
+
+    decision = "NORMAL"
+
+    # Condition 1: If fight is detected > 5 times in 10s
+    if fight_10s >= 5:
+        decision = "RAGGING DETECTED"
+    # Condition 2: If fight is detected >= 3 times in 5s AND hatespeech > 3 times
+    elif fight_5s >= 3 and hate_20s >= 3:
+        decision = "RAGGING DETECTED"
+    # Condition 3: If fight is detected between 1 and 3 times in 10s
+    elif 1 <= fight_10s < 4:
+        decision = "RAGGING POSSIBILITY"
+
+    return decision, fight_10s, fight_5s, hate_20s
+
+# =========================
+# MAIN
+# =========================
 def main():
     print("⏳ Loading YOLO models... (This may take a while on Pi)")
     det_model = YOLO("Yolo_nano_weights.pt")   # violence detector (nano)
@@ -181,31 +267,31 @@ def main():
     print("✅ Models loaded")
 
     camera = open_camera()
-
     if camera is None:
         print("❌ CRITICAL: Could not open any camera.")
         sys.exit(1)
 
-    print("✅ Real-time Violence Detection Started")
+    print("✅ Initializing Hate Speech Thread...")
+    stop_listening = start_speech_listener()
 
-    violence_active = False          # current state
-    violence_announced = False       # terminal print control
+    print("✅ Initializing Firebase Logger...")
+    firebase_logger = FirebaseLogger()
+
+    print("✅ Real-time Unified Decision Engine Started")
 
     prev_gray = None
     prev_keypoints = None
+    last_decision = "NORMAL"
 
-    # =========================
-    # MAIN LOOP
-    # =========================
     try:
-        while True:
+        while not stop_event.is_set():
             ret, frame = camera.read()
             if not ret:
                 print("⚠️ Camera read failed (empty frame)")
                 time.sleep(0.1)
                 continue
             
-            # Convert to grayscale for optical flow
+            # Optical flow setup
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
             # -------------------------
@@ -222,73 +308,95 @@ def main():
                         cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
 
             # -------------------------
-            # POSE (SUPPORT SIGNAL)
+            # POSE & FLOW (Optional support signals)
             # -------------------------
-            pose_aggressive = False
             pose_results = pose_model(frame, verbose=False)
-
             if pose_results and pose_results[0].keypoints is not None:
                 curr_keypoints = pose_results[0].keypoints.xy.cpu().numpy()
                 pose_aggressive = aggressive_pose(prev_keypoints, curr_keypoints)
                 prev_keypoints = curr_keypoints
+                
+                # Draw Skeleton (Red if fight detected, otherwise Green)
+                kp_color = (0, 0, 255) if yolo_violence else (0, 255, 0)
+                SKELETON_PAIRS = [
+                    (0, 1), (0, 2), (1, 3), (2, 4), (5, 6), (5, 7), (7, 9), 
+                    (6, 8), (8, 10), (5, 11), (6, 12), (11, 12), (11, 13), 
+                    (13, 15), (12, 14), (14, 16)
+                ]
+                for person_kps in curr_keypoints:
+                    for kp in person_kps:
+                        x, y = int(kp[0]), int(kp[1])
+                        if x != 0 and y != 0:
+                            cv2.circle(frame, (x, y), 4, kp_color, -1)
+                            
+                    for p1, p2 in SKELETON_PAIRS:
+                        if p1 < len(person_kps) and p2 < len(person_kps):
+                            x1, y1 = int(person_kps[p1][0]), int(person_kps[p1][1])
+                            x2, y2 = int(person_kps[p2][0]), int(person_kps[p2][1])
+                            if x1 != 0 and y1 != 0 and x2 != 0 and y2 != 0:
+                                cv2.line(frame, (x1, y1), (x2, y2), kp_color, 2)
             else:
                 prev_keypoints = None
+                pose_aggressive = False
 
-            # -------------------------
-            # OPTICAL FLOW (SUPPORT SIGNAL)
-            # -------------------------
-            sudden_motion = False
             if prev_gray is not None:
                 flow_score = compute_optical_flow(prev_gray, gray)
                 sudden_motion = flow_score > FLOW_THRESHOLD
-
+            else:
+                sudden_motion = False
             prev_gray = gray
 
-            # =========================
-            # FINAL DECISION (IMMEDIATE)
-            # =========================
+            # Log Fight Detections based on YOLO model
+            now = time.time()
             if yolo_violence:
-                violence_active = True
+                fight_events.append(now)
 
-                if not violence_announced:
-                    print(f"[{time.strftime('%H:%M:%S')}] 🚨 VIOLENCE DETECTED 🚨")
-                    violence_announced = True
-            else:
-                violence_active = False
-                violence_announced = False
+            # Evaluate the system state
+            decision, f_10s, f_5s, h_20s = evaluate_ragging(now)
+
+            # If the state changed, print to terminal
+            if decision != last_decision and decision != "NORMAL":
+                print(f"[{time.strftime('%H:%M:%S')}] 🚨 {decision.upper()} 🚨")
+                is_emergency = (decision == "RAGGING DETECTED")
+                threading.Thread(target=firebase_logger.log_alert, args=(decision, is_emergency), daemon=True).start()
+            last_decision = decision
 
             # -------------------------
             # DISPLAY STATUS
             # -------------------------
-            status = "VIOLENCE" if violence_active else "NORMAL"
-            color = (0, 0, 255) if violence_active else (0, 255, 0)
+            color = (0, 255, 0)
+            if decision == "RAGGING DETECTED":
+                color = (0, 0, 255)
+            elif decision == "RAGGING POSSIBILITY":
+                color = (0, 165, 255) # Orange
 
-            cv2.putText(frame, f"STATUS: {status}", (20, 40),
+            cv2.putText(frame, f"STATUS: {decision}", (20, 40),
                         cv2.FONT_HERSHEY_SIMPLEX, 1, color, 3)
 
-            # Debug signals
-            cv2.putText(frame, f"YOLO: {yolo_violence}", (20, 80),
+            # Debug counts
+            cv2.putText(frame, f"Fights (10s): {f_10s}", (20, 80),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255,255,255), 2)
-            cv2.putText(frame, f"POSE: {pose_aggressive}", (20, 110),
+            cv2.putText(frame, f"Fights (5s): {f_5s}", (20, 110),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255,255,255), 2)
-            cv2.putText(frame, f"FLOW: {sudden_motion}", (20, 140),
+            cv2.putText(frame, f"Hate (20s): {h_20s}", (20, 140),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255,255,255), 2)
 
             try:
-                cv2.imshow("Violence Detection (PiCamera)", frame)
+                cv2.imshow("Unified Decision Engine", frame)
                 if cv2.waitKey(1) & 0xFF == ord('q'):
+                    stop_event.set()
                     break
             except Exception:
                 pass
 
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"❌ Core Loop Error: {e}")
 
     finally:
-        # =========================
-        # CLEANUP
-        # =========================
-        print("Cleaning up resources...")
+        print("🛑 Cleaning up resources...")
+        stop_event.set()
+        if 'stop_listening' in locals() and stop_listening:
+            stop_listening(wait_for_stop=False)
         if camera:
             camera.release()
         try:

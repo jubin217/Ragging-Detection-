@@ -3,6 +3,7 @@ import time
 from decision_engine import DecisionEngine
 from fight_module import FightDetector
 from hate_module import HateDetector
+from firebase_logger import FirebaseLogger
 from colorama import Fore, Style, init
 
 init(autoreset=True)
@@ -13,6 +14,7 @@ init(autoreset=True)
 fight = FightDetector()
 hate = HateDetector()
 engine = DecisionEngine()
+logger = FirebaseLogger()
 
 fight.start()
 hate.start()
@@ -43,6 +45,7 @@ while True:
                   "🚨🚨🚨  EMERGENCY DETECTED  🚨🚨🚨")
             print(Fore.RED + Style.BRIGHT +
                   "Immediate action required!")
+            logger.log_alert("EMERGENCY DETECTED", location="Main Campus", is_emergency=True)
 
         elif state == "WARNING":
             print(Fore.YELLOW + Style.BRIGHT +
