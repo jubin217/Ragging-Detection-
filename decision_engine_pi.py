@@ -39,9 +39,9 @@ from firebase_logger import FirebaseLogger
 # =========================
 # GLOBALS & TUNABLES
 # =========================
-CONF_THRESHOLD = 0.6
-POSE_SPEED_THRESHOLD = 35
-FLOW_THRESHOLD = 1.5
+CONF_THRESHOLD = 0.45
+POSE_SPEED_THRESHOLD = 25
+FLOW_THRESHOLD = 1.0
 RESOLUTION = (640, 480)
 FRAMERATE = 30
 
@@ -245,14 +245,14 @@ def evaluate_ragging(now):
 
     decision = "NORMAL"
 
-    # Condition 1: If fight is detected > 5 times in 10s
-    if fight_10s >= 5:
+    # Condition 1: If fight is detected >= 2 times in 10s
+    if fight_10s >= 2:
         decision = "RAGGING DETECTED"
     # Condition 2: If fight is detected >= 3 times in 5s AND hatespeech > 3 times
     elif fight_5s >= 3 and hate_20s >= 3:
         decision = "RAGGING DETECTED"
-    # Condition 3: If fight is detected between 1 and 3 times in 10s
-    elif 1 <= fight_10s < 4:
+    # Condition 3: If fight is detected exactly 1 time in 10s
+    elif fight_10s == 1:
         decision = "RAGGING POSSIBILITY"
 
     return decision, fight_10s, fight_5s, hate_20s
