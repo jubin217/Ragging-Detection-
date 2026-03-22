@@ -233,31 +233,30 @@ def start_speech_listener():
 # DECISION LOGIC
 # =========================
 def evaluate_ragging(now):
-    # Purge old events (older than 20 seconds)
-    while fight_events and now - fight_events[0] > 20:
-        fight_events.popleft()
-    while hate_events and now - hate_events[0] > 20:
-        hate_events.popleft()
-
+    # Retrieve 10-second moving windows specifically for Rule 1
     fight_10s = sum(1 for t in fight_events if now - t <= 10)
     hate_10s = sum(1 for t in hate_events if now - t <= 10)
+
+    # Total lifetime events (No time limit)
+    total_fights = len(fight_events)
+    total_hate = len(hate_events)
 
     decision = "NORMAL"
 
     # Rule 1: if fight >= 4 and hate speech >= 2 within 10 sec, ragging detected
     if fight_10s >= 4 and hate_10s >= 2:
         decision = "RAGGING DETECTED"
-    # Rule 2: if fight >= 5, ragging possibility
-    elif fight_10s >= 5:
+    # Rule 2: if fight >= 5, ragging possibility (No time limit)
+    elif total_fights >= 5:
         decision = "RAGGING POSSIBILITY"
-    # Rule 4: If hate speech >= 4, potential ragging
-    elif hate_10s >= 4:
+    # Rule 4: If hate speech >= 4, potential ragging (No time limit)
+    elif total_hate >= 4:
         decision = "POTENTIAL RAGGING"
-    # Rule 3: if fight from 1 to 3, suspicious activity
-    elif 1 <= fight_10s <= 3:
+    # Rule 3: if fight from 1 to 3, suspicious activity (No time limit)
+    elif 1 <= total_fights <= 3:
         decision = "SUSPICIOUS ACTIVITY"
 
-    return decision, fight_10s, 0, hate_10s
+    return decision, fight_10s, total_fights, total_hate
 
 # =========================
 # MAIN
@@ -354,7 +353,7 @@ def main():
                 fight_events.append(now)
 
             # Evaluate the system state
-            decision, f_10s, _, h_10s = evaluate_ragging(now)
+            decision, f_10s, total_f, total_h = evaluate_ragging(now)
 
             # If the state changed, print to terminal
             if decision != last_decision and decision != "NORMAL":
@@ -382,7 +381,9 @@ def main():
             # Debug counts
             cv2.putText(frame, f"Fights (10s): {f_10s}", (20, 80),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255,255,255), 2)
-            cv2.putText(frame, f"Hate (10s): {h_10s}", (20, 110),
+            cv2.putText(frame, f"Fights (Total): {total_f}", (20, 110),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255,255,255), 2)
+            cv2.putText(frame, f"Hate (Total): {total_h}", (20, 140),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255,255,255), 2)
 
             try:

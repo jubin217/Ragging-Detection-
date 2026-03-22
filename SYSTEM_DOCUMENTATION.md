@@ -40,15 +40,15 @@ The evaluation function looks at these queues every frame and applies the follow
 - **Output:** `🚨 RAGGING DETECTED`
 
 ### RULE 2: Repeated Physical Violence
-**Condition:** If the Vision AI detects physical fighting **5 or more times** within a **10-second** window.
+**Condition:** If the Vision AI detects physical fighting **5 or more times** in total (No time limit, evaluated over the lifetime of the session).
 - **Output:** `⚠️ RAGGING POSSIBILITY`
 
 ### RULE 3: Suspicious Minor Physical Activity
-**Condition:** If the Vision AI detects fighting between **1 to 3 times** within a **10-second** window.
+**Condition:** If the Vision AI detects fighting between **1 to 3 times** in total (No time limit).
 - **Output:** `🟡 SUSPICIOUS ACTIVITY`
 
 ### RULE 4: Heavy Verbal Abuse
-**Condition:** If the Acoustic AI detects abusive hate speech **4 or more times** within a **10-second** window.
+**Condition:** If the Acoustic AI detects abusive hate speech **4 or more times** in total (No time limit).
 - **Output:** `🟠 POTENTIAL RAGGING`
 
 ---
