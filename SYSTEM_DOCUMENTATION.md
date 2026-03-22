@@ -35,20 +35,21 @@ The script `decision_engine_pi.py` acts as the brain. Rather than triggering an 
 
 The evaluation function looks at these queues every frame and applies the following strict rules:
 
-### RULE 1: Repeated Severe Physical Violence
-**Condition:** If the Vision AI detects physical fighting **2 or more times** within a rolling **10-second** window.
+### RULE 1: Severe Multimedia Disturbance
+**Condition:** If the Vision AI detects physical fighting **4 or more times** AND Acoustic AI detects hate speech **2 or more times** within a **10-second** window.
 - **Output:** `🚨 RAGGING DETECTED`
-- *Rationale*: A sustained physical altercation that lasts several seconds is highly indicative of an emergency requiring immediate intervention. 
 
-### RULE 2: Aggressive Argument + Minor Altercation
-**Condition:** If the Vision AI detects physical fighting **3 or more times** within a **5-second** window **AND** the Acoustic AI detects abusive hate speech **3 or more times** within a **20-second** window.
-- **Output:** `🚨 RAGGING DETECTED`
-- *Rationale*: A verbal argument involving severe profanity that suddenly escalates into physical shoving (even if the fighting is brief). The combination of both sensors triggers a confirmed ragging alert. 
-
-### RULE 3: Minor Physical Disturbance
-**Condition:** If the Vision AI detects fighting **exactly 1 time** within a **10-second** window.
+### RULE 2: Repeated Physical Violence
+**Condition:** If the Vision AI detects physical fighting **5 or more times** within a **10-second** window.
 - **Output:** `⚠️ RAGGING POSSIBILITY`
-- *Rationale*: Brief rapid movement captures the AI's attention. It marks it as a "Possibility" on the screen but does not declare a full-blown emergency alert.
+
+### RULE 3: Suspicious Minor Physical Activity
+**Condition:** If the Vision AI detects fighting between **1 to 3 times** within a **10-second** window.
+- **Output:** `🟡 SUSPICIOUS ACTIVITY`
+
+### RULE 4: Heavy Verbal Abuse
+**Condition:** If the Acoustic AI detects abusive hate speech **4 or more times** within a **10-second** window.
+- **Output:** `🟠 POTENTIAL RAGGING`
 
 ---
 

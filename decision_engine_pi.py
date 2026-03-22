@@ -240,22 +240,24 @@ def evaluate_ragging(now):
         hate_events.popleft()
 
     fight_10s = sum(1 for t in fight_events if now - t <= 10)
-    fight_5s = sum(1 for t in fight_events if now - t <= 5)
-    hate_20s = len(hate_events) # all remaining are <= 20s
+    hate_10s = sum(1 for t in hate_events if now - t <= 10)
 
     decision = "NORMAL"
 
-    # Condition 1: If fight is detected >= 2 times in 10s
-    if fight_10s >= 2:
+    # Rule 1: if fight >= 4 and hate speech >= 2 within 10 sec, ragging detected
+    if fight_10s >= 4 and hate_10s >= 2:
         decision = "RAGGING DETECTED"
-    # Condition 2: If fight is detected >= 3 times in 5s AND hatespeech > 3 times
-    elif fight_5s >= 3 and hate_20s >= 3:
-        decision = "RAGGING DETECTED"
-    # Condition 3: If fight is detected exactly 1 time in 10s
-    elif fight_10s == 1:
+    # Rule 2: if fight >= 5, ragging possibility
+    elif fight_10s >= 5:
         decision = "RAGGING POSSIBILITY"
+    # Rule 4: If hate speech >= 4, potential ragging
+    elif hate_10s >= 4:
+        decision = "POTENTIAL RAGGING"
+    # Rule 3: if fight from 1 to 3, suspicious activity
+    elif 1 <= fight_10s <= 3:
+        decision = "SUSPICIOUS ACTIVITY"
 
-    return decision, fight_10s, fight_5s, hate_20s
+    return decision, fight_10s, 0, hate_10s
 
 # =========================
 # MAIN
@@ -352,7 +354,7 @@ def main():
                 fight_events.append(now)
 
             # Evaluate the system state
-            decision, f_10s, f_5s, h_20s = evaluate_ragging(now)
+            decision, f_10s, _, h_10s = evaluate_ragging(now)
 
             # If the state changed, print to terminal
             if decision != last_decision and decision != "NORMAL":
@@ -367,8 +369,12 @@ def main():
             color = (0, 255, 0)
             if decision == "RAGGING DETECTED":
                 color = (0, 0, 255)
+            elif decision == "POTENTIAL RAGGING":
+                color = (0, 140, 255)
             elif decision == "RAGGING POSSIBILITY":
-                color = (0, 165, 255) # Orange
+                color = (0, 165, 255)
+            elif decision == "SUSPICIOUS ACTIVITY":
+                color = (0, 255, 255)
 
             cv2.putText(frame, f"STATUS: {decision}", (20, 40),
                         cv2.FONT_HERSHEY_SIMPLEX, 1, color, 3)
@@ -376,9 +382,7 @@ def main():
             # Debug counts
             cv2.putText(frame, f"Fights (10s): {f_10s}", (20, 80),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255,255,255), 2)
-            cv2.putText(frame, f"Fights (5s): {f_5s}", (20, 110),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255,255,255), 2)
-            cv2.putText(frame, f"Hate (20s): {h_20s}", (20, 140),
+            cv2.putText(frame, f"Hate (10s): {h_10s}", (20, 110),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255,255,255), 2)
 
             try:
