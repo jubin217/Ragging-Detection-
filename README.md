@@ -1,6 +1,6 @@
-# RaggingGuard AI (Python Decision Engine)
+# ResQvoice AI (Python Decision Engine)
 
-This is the primary Python backend for the RaggingGuard system. It uses a **multi-threaded architecture** on Raspberry Pi edge devices to concurrently run YOLOv8 Pose tracking for physical fight detection and real-time audio analysis for hateful and abusive speech.
+This is the primary Python backend for the ResQvoice system. It uses a **multi-threaded architecture** on Raspberry Pi edge devices to concurrently run YOLOv8 Pose tracking for physical fight detection and real-time audio analysis for hateful and abusive speech.
 
 ## Features
 - **YOLOv8 Pose Skeleton**: Tracks humans and computes acceleration vectors to determine if a physical altercation is occurring.

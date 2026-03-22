@@ -1,12 +1,12 @@
-# RaggingGuard System Documentation
+# ResQvoice System Documentation
 
-This document explains the entire technical architecture, data flow, and the specific artificially intelligent decision rules driving the RaggingGuard system.
+This document explains the entire technical architecture, data flow, and the specific artificially intelligent decision rules driving the ResQvoice system.
 
 ---
 
 ## 1. High-Level Architecture
 
-RaggingGuard is an edge-to-cloud surveillance platform designed to detect abuse and bullying (ragging) on school or university campuses. The system is broken into three main components:
+ResQvoice is an edge-to-cloud surveillance platform designed to detect abuse and bullying (ragging) on school or university campuses. The system is broken into three main components:
 
 1. **Edge Inference Node (Raspberry Pi)**: Runs `decision_engine_pi.py`. This acts as the "eyes and ears" using locally deployed PyTorch and YOLOv8 models. No video or audio is streamed over the internet; all AI processing happens strictly on the local device to ensure privacy and low latency.
 2. **Cloud Mediator (Firebase)**: When a severe incident is detected, the Raspberry Pi securely pushes lightweight JSON telemetry (the type of incident and timestamp) up to Firebase Firestore.
