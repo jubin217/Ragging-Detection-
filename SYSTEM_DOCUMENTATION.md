@@ -36,7 +36,7 @@ The script `decision_engine_pi.py` acts as the brain. Rather than triggering an 
 The evaluation function looks at these queues every frame and applies the following strict rules:
 
 ### RULE 1: Severe Multimedia Disturbance
-**Condition:** If the Vision AI detects physical fighting **4 or more times** AND Acoustic AI detects hate speech **2 or more times** within a **10-second** window.
+**Condition:** If the Vision AI detects physical fighting **4 or more times** AND Acoustic AI detects hate speech **2 or more times** within a **30-second** window.
 - **Output:** `🚨 RAGGING DETECTED`
 
 ### RULE 2: Repeated Physical Violence

@@ -233,9 +233,9 @@ def start_speech_listener():
 # DECISION LOGIC
 # =========================
 def evaluate_ragging(now):
-    # Retrieve 10-second moving windows specifically for Rule 1
-    fight_10s = sum(1 for t in fight_events if now - t <= 10)
-    hate_10s = sum(1 for t in hate_events if now - t <= 10)
+    # Retrieve 30-second moving windows specifically for Rule 1
+    fight_30s = sum(1 for t in fight_events if now - t <= 30)
+    hate_30s = sum(1 for t in hate_events if now - t <= 30)
 
     # Total lifetime events (No time limit)
     total_fights = len(fight_events)
@@ -243,8 +243,8 @@ def evaluate_ragging(now):
 
     decision = "NORMAL"
 
-    # Rule 1: if fight >= 4 and hate speech >= 2 within 10 sec, ragging detected
-    if fight_10s >= 4 and hate_10s >= 2:
+    # Rule 1: if fight >= 4 and hate speech >= 2 within 30 sec, ragging detected
+    if fight_30s >= 4 and hate_30s >= 2:
         decision = "RAGGING DETECTED"
     # Rule 2: if fight >= 5, ragging possibility (No time limit)
     elif total_fights >= 5:
@@ -256,7 +256,7 @@ def evaluate_ragging(now):
     elif 1 <= total_fights <= 3:
         decision = "SUSPICIOUS ACTIVITY"
 
-    return decision, fight_10s, total_fights, total_hate
+    return decision, fight_30s, total_fights, total_hate
 
 # =========================
 # MAIN
@@ -353,7 +353,7 @@ def main():
                 fight_events.append(now)
 
             # Evaluate the system state
-            decision, f_10s, total_f, total_h = evaluate_ragging(now)
+            decision, f_30s, total_f, total_h = evaluate_ragging(now)
 
             # If the state changed, print to terminal
             if decision != last_decision and decision != "NORMAL":
@@ -379,7 +379,7 @@ def main():
                         cv2.FONT_HERSHEY_SIMPLEX, 1, color, 3)
 
             # Debug counts
-            cv2.putText(frame, f"Fights (10s): {f_10s}", (20, 80),
+            cv2.putText(frame, f"Fights (30s): {f_30s}", (20, 80),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255,255,255), 2)
             cv2.putText(frame, f"Fights (Total): {total_f}", (20, 110),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255,255,255), 2)
