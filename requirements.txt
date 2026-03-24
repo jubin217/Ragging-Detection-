@@ -18,3 +18,4 @@ pyaudio
 # 4. CUSTOM & CLOUD
 requests
 malayalam-hate-detector
+pyserial

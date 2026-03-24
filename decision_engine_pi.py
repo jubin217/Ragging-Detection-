@@ -35,6 +35,7 @@ from ultralytics import YOLO
 # Import from our existing Pi scripts
 from hatespeech_pi import KeywordAwareMalayalamDetector, get_usb_mic_index
 from firebase_logger import FirebaseLogger
+from gsm_alert import GSMNotifier
 
 # =========================
 # GLOBALS & TUNABLES
@@ -278,6 +279,9 @@ def main():
     print("✅ Initializing Firebase Logger...")
     firebase_logger = FirebaseLogger()
 
+    print("✅ Initializing GSM Module...")
+    gsm_notifier = GSMNotifier()
+
     print("✅ Real-time Unified Decision Engine Started")
 
     prev_gray = None
@@ -364,7 +368,11 @@ def main():
                 evidence_path = f"evidence_{int(time.time())}.jpg"
                 cv2.imwrite(evidence_path, frame)
                 
+                # Push visual evidence to Firebase
                 threading.Thread(target=firebase_logger.log_with_evidence, args=(decision, is_emergency, evidence_path), daemon=True).start()
+                
+                # Dispatch SMS to authorized authorities via GSM
+                gsm_notifier.trigger_sms(decision)
             last_decision = decision
 
             # -------------------------
