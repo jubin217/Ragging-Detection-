@@ -359,7 +359,12 @@ def main():
             if decision != last_decision and decision != "NORMAL":
                 print(f"[{time.strftime('%H:%M:%S')}] 🚨 {decision.upper()} 🚨")
                 is_emergency = (decision == "RAGGING DETECTED")
-                threading.Thread(target=firebase_logger.log_alert, args=(decision, is_emergency), daemon=True).start()
+                
+                # Save frame temporarily for evidence upload
+                evidence_path = f"evidence_{int(time.time())}.jpg"
+                cv2.imwrite(evidence_path, frame)
+                
+                threading.Thread(target=firebase_logger.log_with_evidence, args=(decision, is_emergency, evidence_path), daemon=True).start()
             last_decision = decision
 
             # -------------------------

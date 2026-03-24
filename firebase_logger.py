@@ -2,6 +2,7 @@ import requests
 import json
 import time
 import os
+import urllib.parse
 
 # Firebase configuration from the user
 FIREBASE_CONFIG = {
@@ -65,7 +66,7 @@ class FirebaseLogger:
         if time.time() > self.token_expiry - 60: # 1 minute buffer
             self._authenticate()
 
-    def log_alert(self, alert_type, is_emergency=True):
+    def log_alert(self, alert_type, is_emergency=True, evidence_url=None):
         """Pushes an alert to the unique user's Firestore subcollection."""
         self._ensure_token()
         if not self.id_token or not self.local_id:
@@ -89,6 +90,9 @@ class FirebaseLogger:
                 "timestamp": {"timestampValue": f"{time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}"}
             }
         }
+        
+        if evidence_url:
+            payload["fields"]["evidenceUrl"] = {"stringValue": evidence_url}
 
         try:
             response = requests.post(url, headers=headers, json=payload)
@@ -98,6 +102,52 @@ class FirebaseLogger:
                 print(f"⚠️ Firestore Push Failed: {response.text}")
         except Exception as e:
             print(f"❌ Error logging to Firebase: {e}")
+
+    def _upload_evidence(self, frame_path):
+        """Uploads a frame to Firebase Storage using REST API and returns download URL."""
+        self._ensure_token()
+        if not self.id_token:
+            return None
+        
+        filename = os.path.basename(frame_path)
+        encoded_name = urllib.parse.quote(f"evidence/{filename}", safe='')
+        
+        bucket = f"{FIREBASE_CONFIG['projectId']}.firebasestorage.app"
+        url = f"https://firebasestorage.googleapis.com/v0/b/{bucket}/o?name={encoded_name}"
+        headers = {
+            "Authorization": f"Bearer {self.id_token}",
+            "Content-Type": "image/jpeg"
+        }
+        
+        try:
+            with open(frame_path, "rb") as f:
+                data = f.read()
+            response = requests.post(url, headers=headers, data=data)
+            if response.status_code == 200:
+                resp_json = response.json()
+                token = resp_json.get("downloadTokens")
+                if token:
+                    download_url = f"https://firebasestorage.googleapis.com/v0/b/{bucket}/o/{encoded_name}?alt=media&token={token}"
+                    print(f"📸 Evidence uploaded securely to Cloud Storage!")
+                    return download_url
+            else:
+                print(f"⚠️ Evidence upload failed: {response.text}")
+        except Exception as e:
+            print(f"❌ Error uploading evidence: {e}")
+            
+        return None
+
+    def log_with_evidence(self, alert_type, is_emergency, frame_path):
+        """Uploads evidence then logs the alert immediately."""
+        evidence_url = None
+        if os.path.exists(frame_path):
+            evidence_url = self._upload_evidence(frame_path)
+            try:
+                os.remove(frame_path) # Cleanup temporary file
+            except Exception as e:
+                print(f"⚠️ Failed to remove temp evidence file: {e}")
+                
+        self.log_alert(alert_type, is_emergency, evidence_url)
 
 if __name__ == "__main__":
     logger = FirebaseLogger()
